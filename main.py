@@ -1,4 +1,9 @@
-# --- PART 1: COMPOSITE PATTERN (Menu) ---
+# ==========================================
+# FINAL PROJECT: ONLINE FOOD ORDERING SYSTEM
+# Patterns: Composite, Observer, Command, Facade
+# ==========================================
+
+# --- PART 1: COMPOSITE PATTERN (Menu Structure) ---
 class MenuComponent:
     def get_name(self): pass
     def get_price(self): pass
@@ -24,100 +29,136 @@ class MenuCategory(MenuComponent):
         for item in self.menu_items:
             item.print_menu()
 
-# --- PART 3: OBSERVER PATTERN (Notifications) ---
-
-# Ye wo log hain jo notification ka intezar kar rahe hain
+# --- PART 2: OBSERVER PATTERN (Notifications) ---
 class Observer:
-    def update(self, message):
-        pass
+    def update(self, message): pass
 
-# Restaurant wala Observer
 class Restaurant(Observer):
     def update(self, message):
-        print(f"🔔 [Restaurant Notification]: {message}")
+        print(f"🔔 [Restaurant Panel]: {message}")
 
-# Delivery Boy wala Observer
 class DeliveryDriver(Observer):
     def update(self, message):
-        print(f"🚴 [Delivery Notification]: {message}")
+        print(f"🚴 [Rider App]: {message}")
 
-# --- PART 2: COMMAND PATTERN (Ordering) ---
-
-# Order Class (Ab ye Subject bhi hai jo notify karega)
+# --- PART 3: COMMAND PATTERN (Order Processing) ---
 class Order:
     def __init__(self):
         self.items = []
-        self.observers = [] # Subscribers ki list
+        self.observers = []
     
-    # Observer (Restaurant/Driver) ko add karna
     def attach(self, observer):
         self.observers.append(observer)
 
-    # Sabko message bhejna
     def notify_observers(self, message):
         for observer in self.observers:
             observer.update(message)
 
     def add_item(self, item):
         self.items.append(item)
-        print(f"Added to cart: {item.name}")
-        
-    def show_order(self):
-        print("\n--- YOUR ORDER ---")
+    
+    def get_total(self):
         total = 0
         for item in self.items:
-            print(f"{item.name} - Rs {item.price}")
             total += item.price
-        print(f"Total Bill: Rs {total}")
+        return total
 
-# Command Interface
+    def show_receipt(self):
+        print("\n--- 🧾 ORDER RECEIPT ---")
+        for item in self.items:
+            print(f"{item.name} : Rs {item.price}")
+        print(f"------------------------")
+        print(f"TOTAL PAYABLE: Rs {self.get_total()}")
+        print(f"------------------------")
+
 class Command:
     def execute(self): pass
 
-# Order Place Command
 class PlaceOrderCommand(Command):
     def __init__(self, order):
         self.order = order
 
     def execute(self):
-        print("\nProcessing Order...")
-        self.order.show_order()
-        print(">>> ORDER PLACED SUCCESSFULLY! <<<")
-        
-        # Jadoo yahan hai: Order place hote hi sabko notify karo
-        self.order.notify_observers("New Order Received! Start Cooking.")
-        self.order.notify_observers("Order ready for pickup soon.")
+        print("\n... Processing Payment ...")
+        self.order.show_receipt()
+        print(">>> ✅ ORDER CONFIRMED! <<<")
+        self.order.notify_observers(f"Order of Rs {self.order.get_total()} received.")
 
 class Waiter:
     def take_order(self, command):
         command.execute()
 
-# --- MAIN SYSTEM CHECK ---
+# --- PART 4: FACADE PATTERN (Simple Interface for User) ---
+class FoodSystemFacade:
+    def __init__(self):
+        # 1. Backend Setup (Jo user ko nahi dikhta)
+        self.kitchen = Restaurant()
+        self.rider = DeliveryDriver()
+        self.waiter = Waiter()
+        
+        # Menu Setup
+        self.burger = FoodItem("Zinger Burger", 500)
+        self.pizza = FoodItem("Chicken Pizza", 1200)
+        self.fries = FoodItem("Masala Fries", 250)
+        self.coke = FoodItem("Chilled Coke", 100)
+        
+        self.main_menu = MenuCategory("Main Menu")
+        self.fast_food = MenuCategory("Fast Food")
+        
+        self.fast_food.add(self.burger)
+        self.fast_food.add(self.pizza)
+        self.fast_food.add(self.fries)
+        self.fast_food.add(self.coke)
+        self.main_menu.add(self.fast_food)
+
+        # Mapping for easy selection
+        self.food_map = {
+            "1": self.burger,
+            "2": self.pizza,
+            "3": self.fries,
+            "4": self.coke
+        }
+
+    # User ke liye simple function: Menu Dekho
+    def browse_menu(self):
+        print("\n=== 🍽️ WELCOME TO FOOD APP ===")
+        print("1. Zinger Burger (500)")
+        print("2. Chicken Pizza (1200)")
+        print("3. Masala Fries (250)")
+        print("4. Chilled Coke (100)")
+        
+    # User ke liye simple function: Order Karo
+    def place_order(self):
+        print("\nEnter food numbers to order (e.g., 1 3 for Burger and Fries):")
+        choices = input("Your Choice: ").split()
+        
+        my_order = Order()
+        # Auto-subscribe restaurant & rider
+        my_order.attach(self.kitchen)
+        my_order.attach(self.rider)
+
+        for choice in choices:
+            if choice in self.food_map:
+                item = self.food_map[choice]
+                my_order.add_item(item)
+            else:
+                print(f"Invalid choice: {choice}")
+
+        if not my_order.items:
+            print("Cart is empty!")
+            return
+
+        # Command chalao
+        command = PlaceOrderCommand(my_order)
+        self.waiter.take_order(command)
+
+# --- MAIN APP (Ab dekhein kitna clean hai) ---
 if __name__ == "__main__":
-    # 1. Menu Setup
-    burger = FoodItem("Zinger Burger", 500)
-    pizza = FoodItem("Chicken Pizza", 1200)
-    fast_food = MenuCategory("Fast Food")
-    fast_food.add(burger)
-    fast_food.add(pizza)
-
-    # 2. Observers Setup (Restaurant aur Driver)
-    kitchen = Restaurant()
-    rider = DeliveryDriver()
-
-    # 3. Order Setup
-    print("--- USER ORDERING ---")
-    my_order = Order()
+    # Pura system bas ek line me start
+    app = FoodSystemFacade()
     
-    # Restaurant aur Rider ne Order ko subscribe kiya
-    my_order.attach(kitchen)
-    my_order.attach(rider)
-
-    # User ne khana chuna
-    my_order.add_item(burger)
-    my_order.add_item(pizza)
-
-    # 4. Order Place kiya
-    command = PlaceOrderCommand(my_order)
-    waiter = Waiter()
-    waiter.take_order(command)
+    # 1. User ne menu dekha
+    app.browse_menu()
+    
+    # 2. User ne order kiya
+    app.place_order()
