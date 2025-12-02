@@ -24,13 +24,40 @@ class MenuCategory(MenuComponent):
         for item in self.menu_items:
             item.print_menu()
 
+# --- PART 3: OBSERVER PATTERN (Notifications) ---
+
+# Ye wo log hain jo notification ka intezar kar rahe hain
+class Observer:
+    def update(self, message):
+        pass
+
+# Restaurant wala Observer
+class Restaurant(Observer):
+    def update(self, message):
+        print(f"🔔 [Restaurant Notification]: {message}")
+
+# Delivery Boy wala Observer
+class DeliveryDriver(Observer):
+    def update(self, message):
+        print(f"🚴 [Delivery Notification]: {message}")
+
 # --- PART 2: COMMAND PATTERN (Ordering) ---
 
-# Ye Order class hai (Jisme hum items jama karenge)
+# Order Class (Ab ye Subject bhi hai jo notify karega)
 class Order:
     def __init__(self):
         self.items = []
+        self.observers = [] # Subscribers ki list
     
+    # Observer (Restaurant/Driver) ko add karna
+    def attach(self, observer):
+        self.observers.append(observer)
+
+    # Sabko message bhejna
+    def notify_observers(self, message):
+        for observer in self.observers:
+            observer.update(message)
+
     def add_item(self, item):
         self.items.append(item)
         print(f"Added to cart: {item.name}")
@@ -43,12 +70,11 @@ class Order:
             total += item.price
         print(f"Total Bill: Rs {total}")
 
-# Command Interface (Hukum)
+# Command Interface
 class Command:
-    def execute(self):
-        pass
+    def execute(self): pass
 
-# Order Place karne ka Command
+# Order Place Command
 class PlaceOrderCommand(Command):
     def __init__(self, order):
         self.order = order
@@ -57,11 +83,13 @@ class PlaceOrderCommand(Command):
         print("\nProcessing Order...")
         self.order.show_order()
         print(">>> ORDER PLACED SUCCESSFULLY! <<<")
+        
+        # Jadoo yahan hai: Order place hote hi sabko notify karo
+        self.order.notify_observers("New Order Received! Start Cooking.")
+        self.order.notify_observers("Order ready for pickup soon.")
 
-# Waiter (Invoker) - Jo command ko chalata hai
 class Waiter:
     def take_order(self, command):
-        print("\n(Waiter ne order le liya hai)")
         command.execute()
 
 # --- MAIN SYSTEM CHECK ---
@@ -69,25 +97,27 @@ if __name__ == "__main__":
     # 1. Menu Setup
     burger = FoodItem("Zinger Burger", 500)
     pizza = FoodItem("Chicken Pizza", 1200)
-    coke = FoodItem("Coke", 100)
-    
-    main_menu = MenuCategory("Main Menu")
     fast_food = MenuCategory("Fast Food")
     fast_food.add(burger)
     fast_food.add(pizza)
-    main_menu.add(fast_food)
 
-    # 2. User aaya aur Menu dekha
-    main_menu.print_menu()
+    # 2. Observers Setup (Restaurant aur Driver)
+    kitchen = Restaurant()
+    rider = DeliveryDriver()
 
-    # 3. User ne Order banaya
+    # 3. Order Setup
+    print("--- USER ORDERING ---")
     my_order = Order()
+    
+    # Restaurant aur Rider ne Order ko subscribe kiya
+    my_order.attach(kitchen)
+    my_order.attach(rider)
+
+    # User ne khana chuna
     my_order.add_item(burger)
-    my_order.add_item(coke)
+    my_order.add_item(pizza)
 
-    # 4. Command banaya (Order Place karne ke liye)
-    order_command = PlaceOrderCommand(my_order)
-
-    # 5. Waiter ko diya
+    # 4. Order Place kiya
+    command = PlaceOrderCommand(my_order)
     waiter = Waiter()
-    waiter.take_order(order_command)
+    waiter.take_order(command)
